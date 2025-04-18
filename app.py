@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from xnxx_api import Client
+import logging
 
 app = Flask(__name__)
 client = Client()
@@ -38,9 +39,9 @@ def search():
     try:
         results = client.search(query)
 
-        # Confirm it's a list, not an object with `.results`
-        if not isinstance(results, list):
-            return jsonify({'error': 'Unexpected search result format'}), 500
+        # DEBUGGING OUTPUT TO RENDER LOG
+        print(f"Search result type: {type(results)}")
+        print(f"Search result content: {results}")
 
         return jsonify([
             {
@@ -53,4 +54,4 @@ def search():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)
