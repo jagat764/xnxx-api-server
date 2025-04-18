@@ -5,7 +5,7 @@ import logging
 app = Flask(__name__)
 client = Client()
 
-# Enable logging
+# Enable debug logging
 logging.basicConfig(level=logging.DEBUG)
 
 @app.route('/')
@@ -41,11 +41,8 @@ def search():
         return jsonify({'error': 'Missing search query'}), 400
 
     try:
-        results = client.search(query)
-
-        # Log the result type and content
-        app.logger.debug(f"Search result type: {type(results)}")
-        app.logger.debug(f"Search result content: {results}")
+        search_obj = client.search(query)
+        results = search_obj.results()  # <-- FIXED: call .results() method
 
         return jsonify([
             {
