@@ -36,8 +36,11 @@ def search():
         return jsonify({'error': 'Missing search query'}), 400
 
     try:
-        search_obj = client.search(query)
-        results = search_obj.results  # Fixed: get iterable list from Search object
+        results = client.search(query)
+
+        # Confirm it's a list, not an object with `.results`
+        if not isinstance(results, list):
+            return jsonify({'error': 'Unexpected search result format'}), 500
 
         return jsonify([
             {
