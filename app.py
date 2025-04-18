@@ -5,12 +5,37 @@ import logging
 app = Flask(__name__)
 client = Client()
 
-# Enable debug logging
 logging.basicConfig(level=logging.DEBUG)
 
 @app.route('/')
 def home():
     return 'XNXX API is running!'
+
+@app.route('/api/search', methods=['GET'])
+def search():
+    query = request.args.get('q')
+    if not query:
+        return jsonify({'error': 'Missing search query'}), 400
+
+    try:
+        search_obj = client.search(query)
+
+        # Try known property names
+        results = getattr(search_obj, 'videos', None) or getattr(search_obj, 'results', None)
+
+        if not results:
+            raise AttributeError("Unexpected search result format")
+
+        return jsonify([
+            {
+                'title': vid.title,
+                'url': vid.url,
+                'thumbnail': vid.thumbnail_url
+            } for vid in results
+        ])
+    except Exception as e:
+        app.logger.error(f"Search error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/video', methods=['GET'])
 def get_video():
@@ -32,27 +57,6 @@ def get_video():
         })
     except Exception as e:
         app.logger.error(f"Video error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/search', methods=['GET'])
-def search():
-    query = request.args.get('q')
-    if not query:
-        return jsonify({'error': 'Missing search query'}), 400
-
-    try:
-        search_obj = client.search(query)
-        results = search_obj.results()  # <-- FIXED: call .results() method
-
-        return jsonify([
-            {
-                'title': vid.title,
-                'url': vid.url,
-                'thumbnail': vid.thumbnail_url
-            } for vid in results
-        ])
-    except Exception as e:
-        app.logger.error(f"Search error: {e}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
