@@ -36,13 +36,9 @@ def search():
         return jsonify({'error': 'Missing search query'}), 400
 
     try:
-        results = client.search(query)
+        search_obj = client.search(query)
+        results = search_obj.results  # Fixed: get iterable list from Search object
 
-        # Check if results is None or not iterable
-        if results is None:
-            return jsonify({'error': 'No results found'}), 404
-
-        # Return search results if valid
         return jsonify([
             {
                 'title': vid.title,
