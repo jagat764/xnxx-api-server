@@ -5,6 +5,9 @@ import logging
 app = Flask(__name__)
 client = Client()
 
+# Enable logging
+logging.basicConfig(level=logging.DEBUG)
+
 @app.route('/')
 def home():
     return 'XNXX API is running!'
@@ -28,6 +31,7 @@ def get_video():
             'video_url': video.content_url
         })
     except Exception as e:
+        app.logger.error(f"Video error: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/search', methods=['GET'])
@@ -39,9 +43,9 @@ def search():
     try:
         results = client.search(query)
 
-        # DEBUGGING OUTPUT TO RENDER LOG
-        print(f"Search result type: {type(results)}")
-        print(f"Search result content: {results}")
+        # Log the result type and content
+        app.logger.debug(f"Search result type: {type(results)}")
+        app.logger.debug(f"Search result content: {results}")
 
         return jsonify([
             {
@@ -51,6 +55,7 @@ def search():
             } for vid in results
         ])
     except Exception as e:
+        app.logger.error(f"Search error: {e}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
