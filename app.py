@@ -1,15 +1,12 @@
 from flask import Flask, request, jsonify
-from xnxx_api import Client
-import logging
+import requests
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
-client = Client()
-
-logging.basicConfig(level=logging.DEBUG)
 
 @app.route('/')
 def home():
-    return 'XNXX API is running!'
+    return 'XNXX scraper API is running!'
 
 @app.route('/api/search', methods=['GET'])
 def search():
@@ -18,45 +15,30 @@ def search():
         return jsonify({'error': 'Missing search query'}), 400
 
     try:
-        search_obj = client.search(query)
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+        url = f"https://www.xnxx.com/search/{query.replace(' ', '+')}"
+        response = requests.get(url, headers=headers)
+        soup = BeautifulSoup(response.content, 'html.parser')
 
-        # Debug: list all available attributes
-        info = {}
-        for attr in dir(search_obj):
-            if not attr.startswith('_'):
-                try:
-                    value = getattr(search_obj, attr)
-                    info[attr] = str(value)
-                except Exception as e:
-                    info[attr] = f"Error accessing attribute: {e}"
+        videos = []
+        for video in soup.select(".mozaique .thumb-block"):
+            a_tag = video.find("a", href=True)
+            img_tag = video.find("img")
+            title = a_tag.get("title") if a_tag else "No title"
+            link = f"https://www.xnxx.com{a_tag['href']}" if a_tag else None
+            thumb = img_tag.get("data-src") or img_tag.get("src") if img_tag else None
 
-        app.logger.debug(f"Search object info: {info}")
-        return jsonify(info)
+            if link:
+                videos.append({
+                    "title": title,
+                    "url": link,
+                    "thumbnail": thumb
+                })
 
+        return jsonify(videos[:30])  # Limit to 30 results
     except Exception as e:
-        app.logger.error(f"Search error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/video', methods=['GET'])
-def get_video():
-    url = request.args.get('url')
-    if not url:
-        return jsonify({'error': 'Missing video URL'}), 400
-
-    try:
-        video = client.get_video(url)
-        return jsonify({
-            'title': video.title,
-            'author': video.author,
-            'duration': video.length,
-            'views': video.views,
-            'likes': video.likes,
-            'thumbnail': video.thumbnail_url,
-            'tags': video.tags,
-            'video_url': video.content_url
-        })
-    except Exception as e:
-        app.logger.error(f"Video error: {e}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
