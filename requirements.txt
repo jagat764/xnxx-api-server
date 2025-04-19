@@ -1,2 +1,3 @@
 flask
-xnxx_api
+requests
+beautifulsoup4
