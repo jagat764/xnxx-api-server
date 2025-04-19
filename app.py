@@ -41,26 +41,36 @@ def index():
           border-radius: 6px;
           margin-bottom: 1rem;
         }
-        .grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        .list {
+          display: flex;
+          flex-direction: column;
           gap: 1rem;
         }
         .video {
+          display: flex;
+          gap: 1rem;
           background: #222;
           border-radius: 8px;
           overflow: hidden;
-          text-align: center;
+          text-align: left;
         }
         .light .video { background: #eee; }
-        .video img { width: 100%; }
+        .video img {
+          width: 140px;
+          height: auto;
+        }
         .video-info {
-          font-size: 14px;
           padding: 0.5rem;
+        }
+        .video-info strong {
+          display: block;
+          font-size: 16px;
+          margin-bottom: 5px;
         }
         .video-info small {
           display: block;
           color: #aaa;
+          font-size: 13px;
         }
         .pagination {
           display: flex;
@@ -110,7 +120,7 @@ def index():
           <button id="prev">Previous</button>
           <button id="next">Next</button>
         </div>
-        <div id="results" class="grid"></div>
+        <div id="results" class="list"></div>
       </div>
 
       <script>
@@ -132,11 +142,12 @@ def index():
             const el = document.createElement('div');
             el.className = 'video';
             el.innerHTML = `
-              <a href="/player?url=${encodeURIComponent(video.url)}">
+              <a href="/player?url=${encodeURIComponent(video.url)}" style="display: flex;">
                 <img src="${video.thumbnail}" alt="">
                 <div class="video-info">
-                  <strong>${video.duration || 'Unknown'}</strong>
-                  <small>${video.quality || ''} ${video.views || ''}</small>
+                  <strong>${video.duration || 'Unknown'} - ${video.quality || ''}</strong>
+                  <small>Views: ${video.views || 'N/A'} | Rating: ${video.rating || 'N/A'}</small>
+                  <small>${video.title || ''}</small>
                 </div>
               </a>
             `;
@@ -233,13 +244,18 @@ def api_video():
         title_tag = soup.select_one("meta[property='og:title']")
         video_tag = soup.select_one("video > source")
 
-        title = title_tag["content"] if title_tag else "Video"
-        stream = video_tag["src"] if video_tag else None
+        title = title_tag["content"].strip() if title_tag and "content" in title_tag.attrs else "Untitled"
+        video_url = video_tag["src"].strip() if video_tag and "src" in video_tag.attrs else None
 
-        if not stream:
+        if not video_url:
+            match = re.search(r'"videoUrl"\s*:\s*"([^"]+)"', res.text)
+            if match:
+                video_url = match.group(1)
+
+        if not video_url:
             return jsonify({'error': 'Video URL not found'}), 500
 
-        return jsonify({"title": title, "video_url": stream})
+        return jsonify({"title": title, "video_url": video_url})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
