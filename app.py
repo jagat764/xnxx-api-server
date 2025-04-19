@@ -2,12 +2,10 @@ from flask import Flask, request, jsonify, render_template_string
 import requests
 from bs4 import BeautifulSoup
 import re
+from urllib.parse import quote_plus
 
 app = Flask(__name__)
 
-# ---------------------------
-# Home Page (Search UI + Theme + Pagination)
-# ---------------------------
 @app.route('/')
 def index():
     return render_template_string("""
@@ -175,9 +173,6 @@ def index():
     </html>
     """)
 
-# ---------------------------
-# API: Search
-# ---------------------------
 @app.route('/api/search')
 def search():
     query = request.args.get('q')
@@ -224,9 +219,6 @@ def search():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ---------------------------
-# API: Video Streaming URL
-# ---------------------------
 @app.route('/api/video')
 def api_video():
     url = request.args.get('url')
@@ -238,15 +230,19 @@ def api_video():
         res = requests.get(url, headers=headers)
         soup = BeautifulSoup(res.content, 'html.parser')
 
-        title = soup.select_one("meta[property='og:title']")["content"]
-        stream = soup.select_one("video > source")["src"]
+        title_tag = soup.select_one("meta[property='og:title']")
+        video_tag = soup.select_one("video > source")
+
+        title = title_tag["content"] if title_tag else "Video"
+        stream = video_tag["src"] if video_tag else None
+
+        if not stream:
+            return jsonify({'error': 'Video URL not found'}), 500
+
         return jsonify({"title": title, "video_url": stream})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ---------------------------
-# Video Player Page (fixed with internal API call)
-# ---------------------------
 @app.route('/player')
 def player():
     url = request.args.get('url')
@@ -254,9 +250,14 @@ def player():
         return "Missing video URL", 400
 
     try:
-        full_api_url = request.host_url.rstrip('/') + f"/api/video?url={url}"
-        res = requests.get(full_api_url)
+        encoded_url = quote_plus(url)
+        internal_api = f"{request.host_url.rstrip('/')}/api/video?url={encoded_url}"
+        res = requests.get(internal_api, headers={"User-Agent": "Mozilla/5.0"})
         data = res.json()
+
+        if "video_url" not in data or "title" not in data:
+            return f"Error loading video: Invalid response format", 500
+
         return render_template_string("""
         <html>
         <head>
@@ -278,8 +279,5 @@ def player():
     except Exception as e:
         return f"Error loading video: {e}", 500
 
-# ---------------------------
-# Run Server
-# ---------------------------
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
