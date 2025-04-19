@@ -26,7 +26,8 @@ def search():
         for video in soup.select(".mozaique .thumb-block"):
             a_tag = video.find("a", href=True)
             img_tag = video.find("img")
-            title = a_tag.get("title") if a_tag else "No title"
+            title_tag = video.select_one("p.metadata")  # Updated: extract title from metadata
+            title = title_tag.get_text(strip=True) if title_tag else "No title"
             link = f"https://www.xnxx.com{a_tag['href']}" if a_tag else None
             thumb = img_tag.get("data-src") or img_tag.get("src") if img_tag else None
 
