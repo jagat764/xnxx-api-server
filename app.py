@@ -20,19 +20,19 @@ def search():
     try:
         search_obj = client.search(query)
 
-        # Try known property names
-        results = getattr(search_obj, 'videos', None) or getattr(search_obj, 'results', None)
+        # Debug: list all available attributes
+        info = {}
+        for attr in dir(search_obj):
+            if not attr.startswith('_'):
+                try:
+                    value = getattr(search_obj, attr)
+                    info[attr] = str(value)
+                except Exception as e:
+                    info[attr] = f"Error accessing attribute: {e}"
 
-        if not results:
-            raise AttributeError("Unexpected search result format")
+        app.logger.debug(f"Search object info: {info}")
+        return jsonify(info)
 
-        return jsonify([
-            {
-                'title': vid.title,
-                'url': vid.url,
-                'thumbnail': vid.thumbnail_url
-            } for vid in results
-        ])
     except Exception as e:
         app.logger.error(f"Search error: {e}")
         return jsonify({'error': str(e)}), 500
