@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import requests
 from bs4 import BeautifulSoup
 import re
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 @app.route('/')
 def home():
@@ -17,9 +19,7 @@ def search():
         return jsonify({'error': 'Missing search query'}), 400
 
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
+        headers = {"User-Agent": "Mozilla/5.0"}
         url = f"https://www.xnxx.com/search/{query.replace(' ', '+')}/{page}"
         response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -59,13 +59,10 @@ def get_video_url():
         return jsonify({'error': 'Missing URL'}), 400
 
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
+        headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(video_page_url, headers=headers)
         soup = BeautifulSoup(response.content, 'html.parser')
 
-        # Look for the script containing the video URL
         script_tags = soup.find_all("script")
         video_url = None
 
