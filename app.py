@@ -6,7 +6,7 @@ import re
 app = Flask(__name__)
 
 # ---------------------------
-# Home Page (Search UI + theme toggle + pagination)
+# Home Page (Search UI + Theme + Pagination)
 # ---------------------------
 @app.route('/')
 def index():
@@ -176,39 +176,39 @@ def index():
     """)
 
 # ---------------------------
-# API: Search Videos
+# API: Search
 # ---------------------------
-@app.route('/api/search', methods=['GET'])
+@app.route('/api/search')
 def search():
     query = request.args.get('q')
     page = request.args.get('page', '1')
     if not query:
-        return jsonify({'error': 'Missing search query'}), 400
+        return jsonify({'error': 'Missing query'}), 400
 
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
         url = f"https://www.xnxx.com/search/{query.replace(' ', '+')}/{page}"
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.content, 'html.parser')
+        res = requests.get(url, headers=headers)
+        soup = BeautifulSoup(res.content, 'html.parser')
 
         videos = []
-        for video in soup.select(".mozaique .thumb-block"):
-            a_tag = video.find("a", href=True)
-            img_tag = video.find("img")
-            title_tag = video.select_one("p.metadata")
-            raw = title_tag.get_text(strip=True) if title_tag else ""
+        for vid in soup.select(".mozaique .thumb-block"):
+            a = vid.find("a", href=True)
+            img = vid.find("img")
+            meta = vid.select_one("p.metadata")
+            raw = meta.get_text(strip=True) if meta else ""
 
             views = rating = duration = quality = None
-            pattern = re.findall(r'([\d\.]+[MK]?)|(\d+%)|(\d+min(?:\s\d+sec)?)|(\d{3,4}p)', raw)
-            for p in pattern:
+            parts = re.findall(r'([\d\.]+[MK]?)|(\d+%)|(\d+min(?:\s\d+sec)?)|(\d{3,4}p)', raw)
+            for p in parts:
                 for i in p:
                     if i.endswith('%'): rating = i
                     elif 'min' in i: duration = i
                     elif 'p' in i: quality = i
                     else: views = i
 
-            link = f"https://www.xnxx.com{a_tag['href']}" if a_tag else None
-            thumb = img_tag.get("data-src") or img_tag.get("src") if img_tag else None
+            link = f"https://www.xnxx.com{a['href']}" if a else None
+            thumb = img.get("data-src") or img.get("src") if img else None
 
             if link:
                 videos.append({
@@ -220,37 +220,32 @@ def search():
                     "duration": duration,
                     "quality": quality
                 })
-
         return jsonify(videos)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 # ---------------------------
-# API: Get Video Stream URL
+# API: Video Streaming URL
 # ---------------------------
-@app.route('/api/video', methods=['GET'])
-def get_video():
+@app.route('/api/video')
+def api_video():
     url = request.args.get('url')
     if not url:
-        return jsonify({'error': 'Missing video URL'}), 400
+        return jsonify({'error': 'Missing URL'}), 400
 
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.content, 'html.parser')
+        res = requests.get(url, headers=headers)
+        soup = BeautifulSoup(res.content, 'html.parser')
 
         title = soup.select_one("meta[property='og:title']")["content"]
-        video_url = soup.select_one("video > source")["src"]
-
-        return jsonify({
-            "title": title,
-            "video_url": video_url
-        })
+        stream = soup.select_one("video > source")["src"]
+        return jsonify({"title": title, "video_url": stream})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 # ---------------------------
-# Player Page
+# Video Player Page (fixed with internal API call)
 # ---------------------------
 @app.route('/player')
 def player():
@@ -259,7 +254,8 @@ def player():
         return "Missing video URL", 400
 
     try:
-        res = requests.get(f"https://xnxx-api-server.onrender.com/api/video?url={url}")
+        full_api_url = request.host_url.rstrip('/') + f"/api/video?url={url}"
+        res = requests.get(full_api_url)
         data = res.json()
         return render_template_string("""
         <html>
@@ -283,7 +279,7 @@ def player():
         return f"Error loading video: {e}", 500
 
 # ---------------------------
-# Run App
+# Run Server
 # ---------------------------
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
