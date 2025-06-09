@@ -20,7 +20,7 @@ def search():
 
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        url = f"https://www.xnxx.com/search/{query.replace(' ', '+')}/{page}"
+        url = f"https://www.xnxx.com/search/hd-only/{query.replace(' ', '+')}/{page}"
         response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.content, 'html.parser')
 
